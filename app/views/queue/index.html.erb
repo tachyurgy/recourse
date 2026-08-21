@@ -1,0 +1,61 @@
+<% content_for :title, "Queue - Recourse" %>
+<h1>Servicing exception queue</h1>
+<p class="lede">Cases a servicer has to touch today, oldest contact first. Every state on this
+page is folded from the event log — no case carries a status column, so the queue and the
+audit trail cannot drift apart.</p>
+
+<form class="row" method="get" action="<%= root_path %>">
+  <div style="min-width:240px">
+    <label for="lender_id">Lender (tenant)</label>
+    <select name="lender_id" id="lender_id" onchange="this.form.submit()">
+      <% @lenders.each do |l| %>
+        <option value="<%= l.id %>" <%= "selected" if @lender&.id == l.id %>><%= l.name %></option>
+      <% end %>
+    </select>
+  </div>
+  <div>
+    <label for="all">Show</label>
+    <select name="all" id="all" onchange="this.form.submit()">
+      <option value="0" <%= "selected" if params[:all] != "1" %>>Open only</option>
+      <option value="1" <%= "selected" if params[:all] == "1" %>>All cases</option>
+    </select>
+  </div>
+</form>
+
+<div class="grid" style="margin:22px 0 8px">
+  <div class="stat"><b><%= @cases.size %></b><span>cases in view</span></div>
+  <div class="stat warn"><b><%= @needs_review.size %></b><span>with a reading needing a person</span></div>
+  <div class="stat"><b><%= @cases.count { |c| c.state == "promised" } %></b><span>promised</span></div>
+  <div class="stat"><b><%= number_to_currency(@cases.sum(&:amount)) %></b><span>exposure in view</span></div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>Loan</th><th>Borrower</th><th>Kind</th><th>State</th><th>Amount</th><th>Waiting</th><th>Latest reading</th></tr>
+  </thead>
+  <tbody>
+    <% @cases.each do |c| %>
+      <% reply = c.replies.max_by(&:received_at) %>
+      <tr>
+        <td class="num"><%= link_to c.loan.external_id, servicing_case_path(c) %></td>
+        <td><%= c.loan.borrower_name %></td>
+        <td><span class="pill kind"><%= c.kind.tr("_", " ") %></span></td>
+        <td><span class="pill <%= c.state %>"><%= c.state.tr("_", " ") %></span></td>
+        <td class="num"><%= number_to_currency(c.amount) %></td>
+        <td class="num <%= "muted" if c.days_waiting.zero? %>"><%= c.days_waiting.zero? ? "—" : "#{c.days_waiting}d" %></td>
+        <td>
+          <% if reply&.intent %>
+            <span class="num"><%= reply.intent.tr("_", " ") %></span>
+            <span class="muted num">· <%= reply.confidence_pct %>%</span>
+            <% if reply.needs_review? %><span class="pill review">review</span><% end %>
+          <% else %>
+            <span class="muted">—</span>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+    <% if @cases.empty? %>
+      <tr><td colspan="7" class="muted">Nothing open for this lender.</td></tr>
+    <% end %>
+  </tbody>
+</table>

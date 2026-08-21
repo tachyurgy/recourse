@@ -1,0 +1,81 @@
+<% content_for :title, "Design notes - Recourse" %>
+<h1>Design notes</h1>
+<p class="lede">Four decisions in this codebase are load-bearing. Each one is a position I would
+defend, and each one is enforced by a test rather than by a convention someone has to remember.</p>
+
+<div class="prose">
+  <h2>1. The case has no status column</h2>
+  <p>A servicing case's state is a fold over its append-only event log, computed on read. There is
+  no <code>status</code> field to update.</p>
+  <p>The alternative — a status column kept in sync with an audit table — has one failure mode, and
+  it is permanent. Any path that writes the status and skips the audit row, or writes the audit row
+  and fails before the status update, leaves the two disagreeing. Nothing detects it. It is found
+  months later by a regulator, or by a borrower who has a screenshot, and by then there is no way
+  to reconstruct which one was lying.</p>
+  <p>Deriving the state costs a query and removes the possibility. The tests assert that a
+  backfilled older event does not overwrite a newer fact, and that an event kind with no state
+  mapping is recorded without changing anything.</p>
+
+  <h2>2. Events are append-only, and the database enforces the rest</h2>
+  <p><code>Event</code> raises on update and on destroy. A fact that happened does not get edited.</p>
+  <p>Idempotency is a unique index on <code>(lender_id, idempotency_key)</code>, not a
+  read-then-write check. Two workers handed the same retried job both pass a "does this exist yet"
+  check and both insert; only one survives a unique index, and the loser is handed the winner's row.
+  The suite replays the same outreach fifty times and asserts one event, and asserts that the same
+  key under a different lender is a different event, because tenancy is part of the key.</p>
+
+  <h2>3. Imports are idempotent at the file and at the row</h2>
+  <p>Servicing shops re-send tapes constantly: a nightly job fires twice, an analyst re-uploads
+  "the good one". The same bytes for the same lender produce one <code>Import</code> row and write
+  nothing, by unique index on the content digest. Within a run, each row upserts on
+  <code>(lender_id, external_id)</code>, and a row whose digest is unchanged is counted and
+  <em>not</em> rewritten — so <code>updated_at</code> stays honest and no spurious "loan changed"
+  event fires downstream.</p>
+  <p>The three counts the importer returns — created, updated, unchanged — are the reconciliation
+  an operator reads before trusting the run. A run that reports twelve updates on a tape nobody
+  changed is a bug you can see. <a href="<%= imports_path %>">The imports page</a> lets you paste a
+  tape and watch a replay do nothing.</p>
+
+  <h2>4. A model reading is evidence; only a person makes it a fact</h2>
+  <p>The classifier writes a <code>Reply</code> row with a typed intent, a confidence, and the
+  verbatim span it relied on. It does not write an event, schedule a draft, or close a case. A
+  servicer promotes it, and the promotion is the event — carrying the confidence and the reply id,
+  so the audit trail records that a model was involved and what it said.</p>
+  <p>This is the decision the <a href="<%= evaluation_path %>">evaluation</a> exists to justify.
+  On the labelled set the model reads <em>"I can do 300 a month, that is genuinely all I have.
+  Take it or take the house"</em> as a promise to pay, at 80% confidence. It is a hardship. Acting
+  on it schedules a draft that returns and charges an NSF fee to the borrower least able to absorb
+  one, which is the harm the product is supposed to reduce. Because the confidence is high, a
+  threshold rule would not catch it. Only the boundary does.</p>
+
+  <h2>Two guards on the structured output</h2>
+  <p>The model is constrained by a response schema, so the caller gets a typed object or an error —
+  never a paragraph to regex. An intent outside the enum is a failure and is recorded as one, not
+  coerced to the nearest match.</p>
+  <p>Then both actionable fields are re-derived from the borrower's own text. An amount survives
+  only if its digits appear in the email; a date survives only if the email contains a date-shaped
+  token. A model that confidently supplies a figure the borrower never wrote loses it here. Both
+  guards are tested directly.</p>
+  <p>When the upstream fails — and it did during this build, on a model deprecation — the
+  classifier degrades to the deterministic baseline, records the error string on the reply, and
+  shows it in the UI. Nothing is silently dropped and nothing is silently wrong.</p>
+
+  <h2>What is deliberately not here</h2>
+  <ul>
+    <li><strong>Authentication.</strong> Tenancy is modelled and enforced on every key; sessions are
+      not, because they would not teach anything about the problem.</li>
+    <li><strong>Outbound sending.</strong> Outreach is an event with an idempotency key. The SMTP
+      side is a solved problem and would add surface without adding an argument.</li>
+    <li><strong>Background jobs.</strong> Classification runs inline so it is watchable. In
+      production it is a job — the idempotency keys are already in place for the retries that
+      implies.</li>
+    <li><strong>Caching the eval.</strong> The recorded run is a JSON file in the repo, on purpose:
+      it is reviewable in a diff, so a regression in the numbers shows up in a pull request.</li>
+  </ul>
+
+  <h2>Stack</h2>
+  <p>Rails 8.1, PostgreSQL, Hotwire, no build step. <%= ClassifierEval.cases.size %> labelled
+  replies; 37 tests, 251 assertions covering the import idempotency, the append-only guarantees,
+  the derived state, the grounding guards, and the eval harness itself.
+  Source at <a href="https://github.com/tachyurgy/recourse">github.com/tachyurgy/recourse</a>.</p>
+</div>

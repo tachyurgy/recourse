@@ -1,0 +1,366 @@
+{
+  "rules": {
+    "classifier": "rules",
+    "accuracy": 47.5,
+    "hits": 19,
+    "total": 40,
+    "errored": 0,
+    "seconds": 0.1,
+    "per_intent": [
+      {
+        "intent": "dispute",
+        "n": 10,
+        "correct": 1,
+        "pct": 10.0
+      },
+      {
+        "intent": "promise_to_pay",
+        "n": 7,
+        "correct": 2,
+        "pct": 28.6
+      },
+      {
+        "intent": "question",
+        "n": 6,
+        "correct": 5,
+        "pct": 83.3
+      },
+      {
+        "intent": "hardship",
+        "n": 5,
+        "correct": 3,
+        "pct": 60.0
+      },
+      {
+        "intent": "unclear",
+        "n": 5,
+        "correct": 4,
+        "pct": 80.0
+      },
+      {
+        "intent": "wrong_person",
+        "n": 4,
+        "correct": 1,
+        "pct": 25.0
+      },
+      {
+        "intent": "unsubscribe",
+        "n": 3,
+        "correct": 3,
+        "pct": 100.0
+      }
+    ],
+    "confusion": {
+      "promise_to_pay": {
+        "promise_to_pay": 2,
+        "unclear": 5
+      },
+      "dispute": {
+        "unclear": 8,
+        "dispute": 1,
+        "question": 1
+      },
+      "hardship": {
+        "hardship": 3,
+        "unclear": 2
+      },
+      "wrong_person": {
+        "wrong_person": 1,
+        "unsubscribe": 1,
+        "unclear": 2
+      },
+      "unsubscribe": {
+        "unsubscribe": 3
+      },
+      "question": {
+        "question": 5,
+        "promise_to_pay": 1
+      },
+      "unclear": {
+        "unclear": 4,
+        "question": 1
+      }
+    },
+    "misses": [
+      {
+        "id": "ptp-no-date",
+        "expected": "promise_to_pay",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "commitment without a date - must NOT invent one",
+        "body": "I'll get it paid, just need a few days to move some money around."
+      },
+      {
+        "id": "ptp-partial",
+        "expected": "promise_to_pay",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "partial payment is still a promise",
+        "body": "I can do 500 now and the rest on the 15th if that works."
+      },
+      {
+        "id": "ptp-hedged",
+        "expected": "promise_to_pay",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "hedged commitment - lower confidence expected",
+        "body": "Should be able to get that over to you by the end of next week, barring anything weird."
+      },
+      {
+        "id": "dispute-already-paid",
+        "expected": "dispute",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "THE costly one - reads like a payment, is actually a dispute",
+        "body": "I paid this last Tuesday, check your records. The money left my account on the 12th."
+      },
+      {
+        "id": "dispute-amount",
+        "expected": "dispute",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "disputes the amount, not the obligation",
+        "body": "That number is wrong. My payment is 1,200 not 1,450, you have the wrong schedule."
+      },
+      {
+        "id": "dispute-bank-error",
+        "expected": "dispute",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "assigns fault to the lender",
+        "body": "This was your bank's error not mine. The transfer was returned because you had the wrong account number on file."
+      },
+      {
+        "id": "hardship-reduced",
+        "expected": "hardship",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "hardship shading toward a modification request",
+        "body": "Hours got cut to about half. I can maybe manage something smaller if you can restructure it."
+      },
+      {
+        "id": "wrong-person-sold",
+        "expected": "wrong_person",
+        "got": "unsubscribe",
+        "confidence": 60,
+        "costly": false,
+        "note": "contains a removal request but the operative fact is wrong party",
+        "body": "I sold that property in 2023. This is not my loan anymore, please take me off it."
+      },
+      {
+        "id": "wrong-person-deceased",
+        "expected": "wrong_person",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "sensitive - must never route to collections outreach",
+        "body": "My father passed away in March. I am his daughter and I am not on this loan."
+      },
+      {
+        "id": "unclear-emoji",
+        "expected": "unclear",
+        "got": "question",
+        "confidence": 60,
+        "costly": false,
+        "note": "degenerate input",
+        "body": "??"
+      },
+      {
+        "id": "ptp-specific-date",
+        "expected": "promise_to_pay",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "ISO date, exact amount",
+        "body": "Putting 1,450 in on 2026-09-03. Confirming so it is on the record."
+      },
+      {
+        "id": "dispute-forbearance",
+        "expected": "dispute",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "disputes that the payment was due",
+        "body": "I was told I was in forbearance until October so this should not have been drafted at all."
+      },
+      {
+        "id": "question-dispute-edge",
+        "expected": "dispute",
+        "got": "question",
+        "confidence": 60,
+        "costly": false,
+        "note": "phrased as a question but demands a reversal - dispute",
+        "body": "Why am I being charged an NSF fee when the payment cleared? Please reverse it."
+      },
+      {
+        "id": "adv-quoted-promise",
+        "expected": "question",
+        "got": "promise_to_pay",
+        "confidence": 60,
+        "costly": false,
+        "note": "the only promise is inside the QUOTED history, not the borrower's new text",
+        "body": "What is this about?\n\n> On Aug 4 you wrote: I will pay the 1,450 on Friday."
+      },
+      {
+        "id": "adv-sarcasm",
+        "expected": "dispute",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "sarcastic - surface form is a promise, meaning is a dispute",
+        "body": "Oh sure, I'll get right on paying a fee for a payment that never bounced."
+      },
+      {
+        "id": "adv-third-party",
+        "expected": "wrong_person",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "contains 'I will forward' - not the borrower, not a promise",
+        "body": "I am the bookkeeper. I will forward this to the owner but I cannot commit to anything on their behalf."
+      },
+      {
+        "id": "adv-negotiation",
+        "expected": "hardship",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "an offer, but the operative fact is inability to pay the contractual amount",
+        "body": "I can do 300 a month, that is genuinely all I have. Take it or take the house."
+      },
+      {
+        "id": "adv-already-scheduled",
+        "expected": "dispute",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "asserts payment is handled - not a new promise",
+        "body": "It is already set up on autopay through my bank. If it did not arrive that is on your end."
+      },
+      {
+        "id": "adv-two-sentences",
+        "expected": "promise_to_pay",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "confirms identity then commits - must not stop at the identity clause",
+        "body": "Yes this is my loan and yes I know it bounced. Sending 1,450 Monday morning."
+      },
+      {
+        "id": "adv-hostile",
+        "expected": "dispute",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "refusal plus a legal threat - a dispute, and NOT an unsubscribe",
+        "body": "Absolutely not. I am not paying a cent of this and you can explain it to my lawyer."
+      },
+      {
+        "id": "adv-partial-dispute",
+        "expected": "dispute",
+        "got": "unclear",
+        "confidence": 30,
+        "costly": false,
+        "note": "pays one thing, disputes another - the fee dispute is the action that changes",
+        "body": "I'll pay the 1,200 principal but I am not paying your 45 dollar NSF fee, that was your error."
+      }
+    ],
+    "costly": 0
+  },
+  "model": {
+    "classifier": "gemini-3.6-flash",
+    "accuracy": 97.5,
+    "hits": 39,
+    "total": 40,
+    "errored": 0,
+    "seconds": 131.7,
+    "per_intent": [
+      {
+        "intent": "dispute",
+        "n": 10,
+        "correct": 10,
+        "pct": 100.0
+      },
+      {
+        "intent": "promise_to_pay",
+        "n": 7,
+        "correct": 7,
+        "pct": 100.0
+      },
+      {
+        "intent": "question",
+        "n": 6,
+        "correct": 6,
+        "pct": 100.0
+      },
+      {
+        "intent": "hardship",
+        "n": 5,
+        "correct": 4,
+        "pct": 80.0
+      },
+      {
+        "intent": "unclear",
+        "n": 5,
+        "correct": 5,
+        "pct": 100.0
+      },
+      {
+        "intent": "wrong_person",
+        "n": 4,
+        "correct": 4,
+        "pct": 100.0
+      },
+      {
+        "intent": "unsubscribe",
+        "n": 3,
+        "correct": 3,
+        "pct": 100.0
+      }
+    ],
+    "confusion": {
+      "promise_to_pay": {
+        "promise_to_pay": 7
+      },
+      "dispute": {
+        "dispute": 10
+      },
+      "hardship": {
+        "hardship": 4,
+        "promise_to_pay": 1
+      },
+      "wrong_person": {
+        "wrong_person": 4
+      },
+      "unsubscribe": {
+        "unsubscribe": 3
+      },
+      "question": {
+        "question": 6
+      },
+      "unclear": {
+        "unclear": 5
+      }
+    },
+    "misses": [
+      {
+        "id": "adv-negotiation",
+        "expected": "hardship",
+        "got": "promise_to_pay",
+        "confidence": 80,
+        "costly": true,
+        "note": "an offer, but the operative fact is inability to pay the contractual amount",
+        "body": "I can do 300 a month, that is genuinely all I have. Take it or take the house."
+      }
+    ],
+    "costly": 1
+  },
+  "ran_at": "2026-08-21T23:23:47Z"
+}

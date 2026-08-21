@@ -1,0 +1,136 @@
+<% content_for :title, "Evaluation - Recourse" %>
+<h1>Classifier evaluation</h1>
+<p class="lede">Forty labelled borrower replies, run through the deterministic baseline and
+through the model. The headline accuracy is the least interesting number here. What the
+set is for is finding the misses that cost a lender money or a complaint, and there is one.</p>
+
+<% rules = @run["rules"]; model = @run["model"] %>
+
+<div class="grid">
+  <div class="stat"><b><%= rules ? "#{rules['accuracy']}%" : "—" %></b><span>rules baseline (<%= rules&.dig("hits") %>/<%= rules&.dig("total") %>)</span></div>
+  <div class="stat good"><b><%= model ? "#{model['accuracy']}%" : "—" %></b><span><%= model&.dig("classifier") || "model" %> (<%= model&.dig("hits") %>/<%= model&.dig("total") %>)</span></div>
+  <div class="stat <%= (model&.dig("costly")).to_i.positive? ? "warn" : "good" %>"><b><%= model&.dig("costly") || 0 %></b><span>costly misses</span></div>
+  <div class="stat"><b><%= model ? "#{(model['seconds'].to_f / model['total'].to_i).round(1)}s" : "—" %></b><span>per reply, uncached</span></div>
+</div>
+
+<% if @run["ran_at"] %>
+  <p class="muted" style="font-size:13px">Recorded <%= @run["ran_at"] %>. The numbers on this page are a recorded
+  run, not a live one — forty uncached calls take about two minutes, which is not something to do on a page load.
+  Use the box below to watch a single reply go through live.</p>
+<% end %>
+
+<h2>Try one live</h2>
+<div class="panel">
+  <%= form_with url: try_evaluation_path, method: :post, local: true do %>
+    <label for="body">A borrower reply</label>
+    <textarea name="body" id="body" placeholder="e.g. I can do 300 a month, that is genuinely all I have."><%= @body %></textarea>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" type="submit">Read it</button>
+      <span class="muted" style="font-size:12.5px">
+        <%= @configured ? "Live model call, structured output, temperature 0." : "No API key present — the rules baseline will answer." %>
+      </span>
+    </div>
+  <% end %>
+
+  <% if @result %>
+    <div class="readout" style="margin-top:18px">
+      <div><dt>intent</dt><dd><%= @result.intent&.tr("_", " ") %></dd></div>
+      <div><dt>confidence</dt><dd><%= @result.confidence_pct %>%</dd></div>
+      <div><dt>promised</dt><dd><%= @result.promised_on || "—" %></dd></div>
+      <div><dt>amount</dt><dd><%= @result.promised_amount_cents ? number_to_currency(@result.promised_amount_cents / 100.0) : "—" %></dd></div>
+      <div><dt>read by</dt><dd><%= @result.classifier %></dd></div>
+    </div>
+    <% if @result.raw&.dig("evidence_span").present? %>
+      <p class="muted" style="font-size:13px;margin:10px 0 0">Evidence cited: <em>“<%= @result.raw["evidence_span"] %>”</em></p>
+    <% end %>
+    <% if @result.error.present? %>
+      <p class="flash bad" style="margin-top:12px">Fell back to the baseline: <code><%= @result.error %></code></p>
+    <% end %>
+  <% end %>
+</div>
+
+<% if model && model["misses"].present? %>
+  <h2>Where it is wrong</h2>
+  <p>Not all misses are equal. Filing a borrower's question as <em>unclear</em> costs a servicer
+  thirty seconds. Reading a <strong>hardship</strong> as a <strong>promise to pay</strong> schedules a
+  draft against an account the borrower has just told you is empty, which returns, which charges
+  them another NSF fee, which is the thing this product exists to reduce. The eval marks that
+  second class separately.</p>
+
+  <% model["misses"].each do |m| %>
+    <div class="panel <%= "tight" unless m["costly"] %>">
+      <p style="margin:0 0 8px">
+        <% if m["costly"] %><span class="pill review">costly</span> <% end %>
+        <span class="num"><%= m["id"] %></span>
+        <span class="muted">— expected <strong><%= m["expected"].tr("_", " ") %></strong>,
+        read as <strong><%= m["got"].tr("_", " ") %></strong> at <%= m["confidence"] %>% confidence</span>
+      </p>
+      <blockquote style="margin:0 0 8px;padding-left:14px;border-left:3px solid var(--rule);color:var(--ink-2);white-space:pre-wrap"><%= m["body"] %></blockquote>
+      <p class="muted" style="font-size:13px;margin:0"><%= m["note"] %></p>
+      <% if m["costly"] %>
+        <p style="font-size:13.5px;margin:12px 0 0"><strong>Why this one matters.</strong>
+        The borrower is not promising, they are telling you what they can survive. The model is
+        confident — 80% — and confidence is exactly what makes it dangerous: a threshold rule
+        would let it straight through. This is the case that decides the architecture. A
+        classification here never becomes a scheduled promise on its own; a servicer promotes it,
+        and the promotion is the event. That boundary is not caution for its own sake, it is the
+        response to a failure that this set reproduces every run.</p>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
+
+<h2>Per intent</h2>
+<div class="scroller">
+  <table>
+    <thead><tr><th>Intent</th><th>Baseline</th><th><%= model&.dig("classifier") || "model" %></th><th>n</th></tr></thead>
+    <tbody>
+      <% (model&.dig("per_intent") || []).each do |row| %>
+        <% base = (rules&.dig("per_intent") || []).find { |r| r["intent"] == row["intent"] } %>
+        <tr>
+          <td><%= row["intent"].tr("_", " ") %></td>
+          <td class="num muted"><%= base ? "#{base['pct']}%" : "—" %></td>
+          <td class="num"><%= row["pct"] %>%</td>
+          <td class="num muted"><%= row["n"] %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<% if model&.dig("confusion").present? %>
+  <h2>Confusion matrix <span class="muted" style="font-weight:400;font-size:13px">— rows are the label, columns are the reading</span></h2>
+  <div class="scroller">
+    <table class="matrix">
+      <thead>
+        <tr><th>expected \ read as</th><% Reply::INTENTS.each do |i| %><th><%= i.tr("_", " ") %></th><% end %></tr>
+      </thead>
+      <tbody>
+        <% Reply::INTENTS.each do |exp| %>
+          <% row = model["confusion"][exp] %>
+          <% next if row.blank? %>
+          <tr>
+            <td><%= exp.tr("_", " ") %></td>
+            <% Reply::INTENTS.each do |got| %>
+              <% n = row[got].to_i %>
+              <td class="<%= exp == got ? 'diag' : (n.positive? ? 'off' : 'zero') %>"><%= n.zero? ? "·" : n %></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>
+
+<h2>On the labelled set</h2>
+<div class="prose">
+  <p>The first thirty cases were written to sit on the boundaries a servicing shop trips over.
+  The model scored <strong>30 of 30</strong> on them. That is not a result, it is a signal that the set
+  stopped discriminating, so ten adversarial cases were added: a promise that appears only inside
+  quoted history, a sarcastic refusal shaped like agreement, a bookkeeper who says "I will forward
+  this", a conditional that commits to nothing, and the negotiation above.</p>
+  <p>Accuracy fell from 100% to <strong><%= model&.dig("accuracy") %>%</strong>, which is the number
+  worth having. An eval that only ever goes up is measuring the wrong thing. The next ten cases
+  should be drawn from real returned mail rather than written, because the failures that matter
+  are the ones nobody thought to imagine.</p>
+</div>

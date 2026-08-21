@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><%= content_for(:title) || "Recourse" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="A loan-servicing exception queue: idempotent tape imports, an append-only event log, and model readings of borrower replies that a person promotes.">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="wrap">
+        <a class="brand" href="<%= root_path %>">Recourse<span>servicing exception queue</span></a>
+        <nav>
+          <%= link_to "Queue", root_path, class: ("on" if controller_name == "queue") %>
+          <%= link_to "Imports", imports_path, class: ("on" if controller_name == "imports") %>
+          <%= link_to "Evaluation", evaluation_path, class: ("on" if controller_name == "evaluation") %>
+          <%= link_to "Design notes", notes_path, class: ("on" if controller_name == "pages") %>
+        </nav>
+      </div>
+    </header>
+
+    <% if notice %><div class="wrap"><p class="flash ok"><%= notice %></p></div><% end %>
+    <% if alert %><div class="wrap"><p class="flash bad"><%= alert %></p></div><% end %>
+
+    <main class="wrap"><%= yield %></main>
+
+    <footer class="wrap">
+      <p>Recourse is a working demonstration built on synthetic loan data. No real borrower
+         information is present. Source: <a href="https://github.com/tachyurgy/recourse">github.com/tachyurgy/recourse</a></p>
+    </footer>
+  </body>
+</html>

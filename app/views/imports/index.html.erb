@@ -1,0 +1,51 @@
+<% content_for :title, "Imports - Recourse" %>
+<h1>Loan tape imports</h1>
+<p class="lede">The same tape arriving twice must not produce two imports or two loans. Paste one
+below and send it twice — the second is a replay that writes nothing and tells you so.</p>
+
+<div class="panel">
+  <%= form_with url: create_import_path, method: :post, local: true do %>
+    <div class="row">
+      <div style="min-width:240px">
+        <label for="lender_id">Lender</label>
+        <select name="lender_id" id="lender_id">
+          <% @lenders.each do |l| %>
+            <option value="<%= l.id %>" <%= "selected" if @lender&.id == l.id %>><%= l.name %></option>
+          <% end %>
+        </select>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <label for="filename">Filename</label>
+        <input type="text" name="filename" id="filename" value="tape-<%= Date.current.iso8601 %>.csv">
+      </div>
+    </div>
+    <label for="tape">Tape (CSV)</label>
+    <textarea name="tape" id="tape">loan_id,borrower_name,borrower_email,principal,rate,maturity_date,next_payment_date
+<%= @lender&.loans&.order(:external_id)&.first&.external_id || "L-1001" %>,<%= @lender&.loans&.order(:external_id)&.first&.borrower_name || "Dana Whitfield" %>,dana@example.com,"245,000.00",8.75,<%= Date.current + 400 %>,<%= Date.current + 12 %>
+L-9001,New Borrower,new@example.com,"310,000.00",9.25,<%= Date.current + 700 %>,<%= Date.current + 20 %></textarea>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" type="submit">Import</button>
+      <span class="muted" style="font-size:12.5px">Required columns: loan_id, borrower_name, principal, rate, maturity_date, next_payment_date.</span>
+    </div>
+  <% end %>
+</div>
+
+<h2>History for <%= @lender&.name %></h2>
+<table>
+  <thead><tr><th>#</th><th>File</th><th>Rows</th><th>Created</th><th>Updated</th><th>Unchanged</th><th>Digest</th><th>When</th></tr></thead>
+  <tbody>
+    <% @imports.each do |i| %>
+      <tr>
+        <td class="num"><%= i.id %></td>
+        <td><%= i.filename %></td>
+        <td class="num"><%= i.row_count %></td>
+        <td class="num"><%= i.created_count %></td>
+        <td class="num"><%= i.updated_count %></td>
+        <td class="num muted"><%= i.unchanged_count %></td>
+        <td class="num muted"><%= i.content_digest.first(12) %></td>
+        <td class="num muted"><%= i.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+      </tr>
+    <% end %>
+    <% if @imports.empty? %><tr><td colspan="8" class="muted">No imports yet.</td></tr><% end %>
+  </tbody>
+</table>

@@ -1,0 +1,210 @@
+# Labelled borrower replies. Hand-written to sit on the boundaries a servicing shop
+# actually trips over, not the easy middle of each class. Labels are the action a servicer
+# should take next, which is why "I paid it last Tuesday" is a dispute and not a promise:
+# the borrower is asserting the debt is gone, and treating it as a promise schedules a
+# draft against an account they believe is settled.
+
+- id: ptp-plain
+  expected: promise_to_pay
+  body: "Hi - sorry about that, I can pay the 1,450 on Friday. Will send it from the same account."
+  note: clean case, date and amount both stated
+
+- id: ptp-no-date
+  expected: promise_to_pay
+  body: "I'll get it paid, just need a few days to move some money around."
+  note: commitment without a date - must NOT invent one
+
+- id: ptp-partial
+  expected: promise_to_pay
+  body: "I can do 500 now and the rest on the 15th if that works."
+  note: partial payment is still a promise
+
+- id: ptp-hedged
+  expected: promise_to_pay
+  body: "Should be able to get that over to you by the end of next week, barring anything weird."
+  note: hedged commitment - lower confidence expected
+
+- id: dispute-already-paid
+  expected: dispute
+  body: "I paid this last Tuesday, check your records. The money left my account on the 12th."
+  note: THE costly one - reads like a payment, is actually a dispute
+
+- id: dispute-amount
+  expected: dispute
+  body: "That number is wrong. My payment is 1,200 not 1,450, you have the wrong schedule."
+  note: disputes the amount, not the obligation
+
+- id: dispute-never-missed
+  expected: dispute
+  body: "I have never missed a payment in four years. Whoever sent this needs to check again."
+  note: indignant, no payment language at all
+
+- id: dispute-bank-error
+  expected: dispute
+  body: "This was your bank's error not mine. The transfer was returned because you had the wrong account number on file."
+  note: assigns fault to the lender
+
+- id: hardship-job
+  expected: hardship
+  body: "I was laid off three weeks ago and I honestly don't have it right now. Is there anything you can do?"
+  note: hardship with a question attached - hardship must win
+
+- id: hardship-medical
+  expected: hardship
+  body: "My wife has been in the hospital since the 4th and I have not been working. I know I owe you."
+  note: acknowledges debt but cannot pay - NOT a promise
+
+- id: hardship-with-intent
+  expected: hardship
+  body: "I want to pay you, I really do, but I lost my job and there is no income coming in until I find something."
+  note: THE trap - contains 'I want to pay' but the operative fact is no income
+
+- id: hardship-reduced
+  expected: hardship
+  body: "Hours got cut to about half. I can maybe manage something smaller if you can restructure it."
+  note: hardship shading toward a modification request
+
+- id: wrong-person-plain
+  expected: wrong_person
+  body: "You have the wrong number. I don't know anyone by that name."
+  note: clean
+
+- id: wrong-person-sold
+  expected: wrong_person
+  body: "I sold that property in 2023. This is not my loan anymore, please take me off it."
+  note: contains a removal request but the operative fact is wrong party
+
+- id: wrong-person-deceased
+  expected: wrong_person
+  body: "My father passed away in March. I am his daughter and I am not on this loan."
+  note: sensitive - must never route to collections outreach
+
+- id: unsub-plain
+  expected: unsubscribe
+  body: "Stop emailing me."
+  note: three words, must still land
+
+- id: unsub-legal
+  expected: unsubscribe
+  body: "Do not contact me again at this address. Any further communication should go through my attorney."
+  note: cease-and-desist shaped - highest-cost class to miss
+
+- id: unsub-polite
+  expected: unsubscribe
+  body: "Please remove me from these notifications, I get them four times a week and it is a lot."
+  note: polite phrasing, same obligation
+
+- id: question-when
+  expected: question
+  body: "What date is this actually due? The letter and the portal say two different things."
+  note: no commitment
+
+- id: question-how
+  expected: question
+  body: "Can I pay this by card or does it have to be a bank transfer?"
+  note: mentions paying but commits to nothing - the promise/question boundary
+
+- id: question-who
+  expected: question
+  body: "Who is handling my file now? The last person I spoke to no longer works there."
+  note: routing question
+
+- id: question-fee
+  expected: question
+  body: "Is the 45 dollar fee on top of the payment or included in it?"
+  note: contains an amount that must NOT become a promised amount
+
+- id: unclear-ack
+  expected: unclear
+  body: "ok"
+  note: acknowledgement with no content
+
+- id: unclear-forward
+  expected: unclear
+  body: "FYI - see below.\n\n> Your payment was returned for insufficient funds on 08/12."
+  note: quoted original with no borrower text
+
+- id: unclear-autoreply
+  expected: unclear
+  body: "I am out of the office until the 28th with limited access to email."
+  note: autoresponder - must not be read as a hardship or a promise
+
+- id: unclear-emoji
+  expected: unclear
+  body: "??"
+  note: degenerate input
+
+- id: ptp-specific-date
+  expected: promise_to_pay
+  body: "Putting 1,450 in on 2026-09-03. Confirming so it is on the record."
+  note: ISO date, exact amount
+
+- id: dispute-forbearance
+  expected: dispute
+  body: "I was told I was in forbearance until October so this should not have been drafted at all."
+  note: disputes that the payment was due
+
+- id: hardship-then-promise
+  expected: promise_to_pay
+  body: "Money has been tight but I got paid Friday so I will send the whole thing Monday."
+  note: mentions hardship, resolves to a firm promise - order matters
+
+- id: question-dispute-edge
+  expected: dispute
+  body: "Why am I being charged an NSF fee when the payment cleared? Please reverse it."
+  note: phrased as a question but demands a reversal - dispute
+
+# --- adversarial set -------------------------------------------------------
+# Added after the first pass scored 100/100 on the set above. A perfect score means the
+# set stopped discriminating, not that the classifier is finished. These are the shapes
+# that actually arrive in a servicing inbox and that a naive reading gets wrong.
+
+- id: adv-quoted-promise
+  expected: question
+  body: "What is this about?\n\n> On Aug 4 you wrote: I will pay the 1,450 on Friday."
+  note: the only promise is inside the QUOTED history, not the borrower's new text
+
+- id: adv-sarcasm
+  expected: dispute
+  body: "Oh sure, I'll get right on paying a fee for a payment that never bounced."
+  note: sarcastic - surface form is a promise, meaning is a dispute
+
+- id: adv-third-party
+  expected: wrong_person
+  body: "I am the bookkeeper. I will forward this to the owner but I cannot commit to anything on their behalf."
+  note: contains 'I will forward' - not the borrower, not a promise
+
+- id: adv-conditional
+  expected: question
+  body: "If I pay the arrears by the 30th does the default get removed from my file?"
+  note: conditional - commits to nothing until answered
+
+- id: adv-negotiation
+  expected: hardship
+  body: "I can do 300 a month, that is genuinely all I have. Take it or take the house."
+  note: an offer, but the operative fact is inability to pay the contractual amount
+
+- id: adv-already-scheduled
+  expected: dispute
+  body: "It is already set up on autopay through my bank. If it did not arrive that is on your end."
+  note: asserts payment is handled - not a new promise
+
+- id: adv-two-sentences
+  expected: promise_to_pay
+  body: "Yes this is my loan and yes I know it bounced. Sending 1,450 Monday morning."
+  note: confirms identity then commits - must not stop at the identity clause
+
+- id: adv-vague-soon
+  expected: unclear
+  body: "Working on it."
+  note: too thin to be a promise - must not be upgraded
+
+- id: adv-hostile
+  expected: dispute
+  body: "Absolutely not. I am not paying a cent of this and you can explain it to my lawyer."
+  note: refusal plus a legal threat - a dispute, and NOT an unsubscribe
+
+- id: adv-partial-dispute
+  expected: dispute
+  body: "I'll pay the 1,200 principal but I am not paying your 45 dollar NSF fee, that was your error."
+  note: pays one thing, disputes another - the fee dispute is the action that changes

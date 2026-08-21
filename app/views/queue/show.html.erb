@@ -1,0 +1,58 @@
+<% content_for :title, "#{@case.loan.external_id} - Recourse" %>
+<p class="muted" style="font-size:13px;margin:0 0 4px"><%= link_to "← queue", root_path(lender_id: @case.lender_id) %></p>
+<h1><%= @case.loan.borrower_name %> <span class="muted num" style="font-size:17px">· <%= @case.loan.external_id %></span></h1>
+<p class="lede">
+  <span class="pill kind"><%= @case.kind.tr("_", " ") %></span>
+  <span class="pill <%= @case.state %>"><%= @case.state.tr("_", " ") %></span>
+  &nbsp;<%= @case.lender.name %> · principal <%= number_to_currency(@case.loan.principal) %>
+  at <%= @case.loan.rate_pct %>% · at issue <%= number_to_currency(@case.amount) %>
+</p>
+
+<div class="grid">
+  <div class="stat"><b><%= @case.days_waiting.zero? ? "—" : "#{@case.days_waiting}d" %></b><span>since last contact</span></div>
+  <div class="stat"><b><%= @events.size %></b><span>events on file</span></div>
+  <div class="stat"><b><%= @case.loan.maturity_on&.strftime("%b %Y") || "—" %></b><span>maturity</span></div>
+</div>
+
+<h2>Borrower replies</h2>
+<% if @replies.empty? %>
+  <p class="muted">No inbound replies on this case.</p>
+<% end %>
+<% @replies.each do |r| %>
+  <div class="reply">
+    <blockquote><%= r.body %></blockquote>
+    <div class="readout">
+      <div><dt>intent</dt><dd><%= r.intent&.tr("_", " ") || "unread" %></dd></div>
+      <div><dt>confidence</dt><dd><%= r.confidence_pct ? "#{r.confidence_pct}%" : "—" %></dd></div>
+      <div><dt>promised</dt><dd><%= r.promised_on&.strftime("%Y-%m-%d") || "—" %></dd></div>
+      <div><dt>amount</dt><dd><%= r.promised_amount ? number_to_currency(r.promised_amount) : "—" %></dd></div>
+      <div><dt>read by</dt><dd><%= r.classifier || "—" %></dd></div>
+      <% if r.needs_review? %><div><span class="pill review">needs a person</span></div><% end %>
+    </div>
+    <% if r.raw_output.present? && r.raw_output["evidence_span"].present? %>
+      <p class="muted" style="font-size:13px;margin:10px 0 0">
+        Evidence the model cited: <em>“<%= r.raw_output["evidence_span"] %>”</em>
+      </p>
+    <% end %>
+    <% if r.classification_error.present? %>
+      <p class="flash bad" style="margin-top:10px">Upstream failed, fell back to the rules baseline: <code><%= r.classification_error %></code></p>
+    <% end %>
+    <div class="row" style="margin-top:14px">
+      <%= button_to "Promote to an event", promote_case_path(@case, reply_id: r.id), class: "primary" %>
+      <%= button_to "Re-read", classify_case_path(@case, reply_id: r.id) %>
+      <span class="muted" style="font-size:12.5px">A reading is evidence. Promoting is the only path to a fact, and it is idempotent.</span>
+    </div>
+  </div>
+<% end %>
+
+<h2>Event log <span class="muted" style="font-weight:400;font-size:13px">— append-only; the case state above is a fold over this</span></h2>
+<ul class="log">
+  <% @events.each do |e| %>
+    <li class="<%= "key" if ServicingCase::TRANSITIONS.key?(e.kind) %>">
+      <span class="k"><%= e.kind %></span>
+      <span class="t"><%= e.occurred_at.strftime("%Y-%m-%d %H:%M") %> · <%= e.actor %></span>
+      <% if e.payload.present? %><div class="p"><%= e.payload.to_json %></div><% end %>
+      <% if e.idempotency_key.present? %><div class="p muted">key: <%= e.idempotency_key %></div><% end %>
+    </li>
+  <% end %>
+</ul>
